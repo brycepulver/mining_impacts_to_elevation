@@ -13,7 +13,7 @@ library(tidyverse)
 library(sf)  #Spatial datasets
 library(mapview) #interactive mapping
 library(raster) #Raster analysis
-library(elevatr) #National Elevation Dataset downloader. 
+library(elevatr) #National Elevation Dataset downloader 
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -82,15 +82,15 @@ mapview(az_mine)
 ```{r}
 
 #Check projection of az_mine
-#st_crs(az_mine)
+st_crs(az_mine)
 
 az_raster_before <- get_elev_raster(az_mine,z=12)
 
 #Look at the structure of the data
-#str(az_raster)
+str(az_raster_before)
 
 #Summary of the data
-#summary(az_raster)
+summary(az_raster_before)
 
 plot(az_raster_before)
 
@@ -171,8 +171,14 @@ plot(dem_diff)
 You may want to check out the command maxValue and minValue
 
 ```{r}
+maxValue(dem_diff)
+
+
+minValue(dem_diff)
+
 
 #YOUR CODE HERE
+
 ```
 
 
@@ -192,7 +198,11 @@ elevation change?
 ### 2a) Buffer the az_mine object by 5 kilometers using the sf::st_buffer command
 
 ```{r}
+az_mine_buffer<-st_buffer(az_mine, dist=5000)
 
+mapview(az_mine_buffer)+
+  mapview(az_mine)
+  
 #Your code here
 
 
@@ -206,6 +216,13 @@ same projection as the dem_diff raster dataset
 hint: you may want to explore st_crs to help you here
 
 ```{r}
+dem_diff_crs<-st_crs(dem_diff)
+
+az_mine_buffer_proj<-az_mine_buffer%>%
+  st_transform(dem_diff_crs$epsg)
+
+#checking to see if the projection worked
+st_crs(az_mine_buffer_proj)
 
 ```
 
@@ -218,12 +235,19 @@ the inverse option does
 
 ```{r}
 #Your code here
+?mask
+dem_diff_invmask<-dem_diff%>%
+  raster::mask(az_mine_buffer_proj,inverse=TRUE)
+plot(dem_diff_invmask)
 ```
 
 
 ### 2d) Use the summary command to look at the summary of
 differences between these two DEMs in areas where there has
 been no mining
+```{r}
+summary(dem_diff_invmask)
+```
 
 
 ## 3) What does the shape of the "error" distribution look like
@@ -239,6 +263,14 @@ make a plot of the two dems.
 USGS az_mine dataset
 
 ```{r}
+plot(az_mine)
+
+az_mine_proj<-az_mine%>%
+  st_transform(dem_diff_crs$epsg)
+
+dem_diff_invmask2<-dem_diff%>%
+  raster::mask(az_mine_proj,inverse=TRUE)
+plot(dem_diff_invmask2)
 
 ```
 
@@ -248,6 +280,10 @@ values from both the unmined and mined regions of your rasters.
 Label these vectors as `unmined_dem` and `mined_dem`. 
 
 ```{r}
+
+unmined_dem<-getValues(dem_diff_invmask2)
+mined_dem <- getValues(dem_diff)
+?getValues
 
 
 
@@ -264,7 +300,11 @@ unmined_type <- rep('unmined',length(unmined_dem))
 mined_type <- rep('mined',length(mined_dem))
 mined_table <- tibble(dem_values = c(unmined_dem,mined_dem),
                       type = c(unmined_type,mined_type)) 
-                      
+
+#Plot of Dem Value desities                      
+ggplot(mined_table,aes(dem_values,fill=type))+
+  geom_density()
+?geom_density
                     
 ```
 
